@@ -1,0 +1,15 @@
+[package]
+name = "timelord"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+moniclock = "*"
+ciborium = "*"
+serde = "*"
+serde_derive = "*"
+tarpc = {version = "*", features = ["full"]}
+futures = "*"
+uuid = {version = "*", features = ["v4", "serde"]}
+tokio = {version = "*", features = ["macros", "rt-multi-thread"]}
+thiserror = "*"

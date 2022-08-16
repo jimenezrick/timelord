@@ -148,15 +148,28 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
             new_st
         }
     };
-    let oneself = Oneself::new(st, srv_addr, peers_addrs);
-    let oneself_client = oneself.clone();
+    let oneself = Oneself::new(st, srv_addr, peers_addrs.clone());
 
-    tokio::spawn(async move {
-        client(oneself_client).await.unwrap();
-    });
+    for connect_peer in peers_addrs {
+        let oneself_client = oneself.clone();
+        tokio::spawn(async move {
+            loop {
+                {
+                    log::info!("Trying to connect to peer: {}", connect_peer);
+                    let r = client(oneself_client.clone(), connect_peer).await;
+                    match r {
+                        Ok(()) => (),
+                        Err(err) => log::error!("Failed to connect to peer: {}", connect_peer),
+                    }
+                }
 
-    println!("State: {:?}", st);
-    println!("Running server: {}", srv_addr);
+                tokio::time::sleep(Duration::SECOND).await;
+            }
+        });
+    }
+
+    log::info!("State: {:?}", st);
+    log::info!("Running server: {}", srv_addr);
 
     serve(oneself.clone()).await?;
 
@@ -195,9 +208,9 @@ fn store_state(path: &path::Path, state: State) -> Result<(), Box<dyn error::Err
     Ok(())
 }
 
-async fn client(oneself: Oneself) -> Result<(), Box<dyn error::Error>> {
+async fn client(oneself: Oneself, connect_peer: SocketAddr) -> Result<(), Box<dyn error::Error>> {
     let transport = tarpc::serde_transport::tcp::connect(
-        oneself.peers_addrs[0], // XXX
+        connect_peer,
         tarpc::tokio_serde::formats::Bincode::default,
     );
     let client = ServiceClient::new(tarpc::client::Config::default(), transport.await?).spawn();

@@ -224,7 +224,7 @@ async fn client(oneself: Oneself, connect_peer: SocketAddr) -> Result<(), Box<dy
 
     loop {
         let now = client.now(tarpc::context::current()).await?;
-        println!("now = {:?}", now);
+        log::info!("now = {:?}", now);
     }
 }
 

@@ -127,9 +127,7 @@ impl State {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn error::Error>> {
-    // TODO: https://docs.rs/tokio/latest/tokio/fn.spawn.html
-    // Connect to all peers
-    // return client().await;
+    env_logger::init();
 
     let addrs_args: Vec<SocketAddr> = env::args()
         .skip(1)

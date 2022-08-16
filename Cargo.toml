@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 log = "*"
+env_logger = "*"
 moniclock = "*"
 ciborium = "*"
 serde = "*"

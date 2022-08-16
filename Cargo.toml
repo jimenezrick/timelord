@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+log = "*"
 moniclock = "*"
 ciborium = "*"
 serde = "*"
@@ -13,3 +14,6 @@ futures = "*"
 uuid = {version = "*", features = ["v4", "serde"]}
 tokio = {version = "*", features = ["macros", "rt-multi-thread"]}
 thiserror = "*"
+
+[profile.dev]
+panic = 'abort'

@@ -157,7 +157,9 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
                     let r = client(oneself_client.clone(), connect_peer).await;
                     match r {
                         Ok(()) => (),
-                        Err(err) => log::error!("Failed to connect to peer: {}", connect_peer),
+                        Err(err) => {
+                            log::error!("Failed to connect to peer {}: {}", connect_peer, err)
+                        }
                     }
                 }
 

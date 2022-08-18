@@ -161,7 +161,7 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
                     }
                 }
 
-                tokio::time::sleep(Duration::SECOND).await;
+                tokio::time::sleep(Duration::SECOND * 5).await;
             }
         });
     }
@@ -180,12 +180,12 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     loop {
         let before = time::Instant::now();
         thread::sleep(time::Duration::SECOND * 1);
-        println!("Elapsed: {:?}", before.elapsed());
+        log::info!("Elapsed: {:?}", before.elapsed());
 
         buf.resize(1024, 0);
         let s = sock.recv(buf.as_mut_slice()).unwrap();
         buf.truncate(s);
-        println!("Received: {:?}", String::from_utf8(buf.clone()).unwrap());
+        log::info!("Received: {:?}", String::from_utf8(buf.clone()).unwrap());
     }
 }
 
@@ -215,17 +215,17 @@ async fn client(oneself: Oneself, connect_peer: SocketAddr) -> Result<(), Box<dy
 
     let epoch = client.epoch(tarpc::context::current()).await?;
     let identity = client.identity(tarpc::context::current()).await?;
-    println!("identity={}, epoch={:?}", identity, epoch);
+    log::info!("identity={}, epoch={:?}", identity, epoch);
 
     let recruit = client
         .recruit(tarpc::context::current(), oneself.into())
         .await?;
-    println!("recruit = {:?}", recruit);
+    log::info!("recruit = {:?}", recruit);
 
-    loop {
-        let now = client.now(tarpc::context::current()).await?;
-        log::info!("now = {:?}", now);
-    }
+    let now = client.now(tarpc::context::current()).await?;
+    log::info!("now = {:?}", now);
+
+    Ok(())
 }
 
 async fn serve(oneself: Oneself) -> Result<(), Box<dyn error::Error>> {
@@ -240,7 +240,7 @@ async fn serve(oneself: Oneself) -> Result<(), Box<dyn error::Error>> {
         .filter_map(|r| future::ready(r.ok()))
         .map(tarpc::server::BaseChannel::with_defaults)
         .map(|channel| {
-            println!("peer={:?}", channel.transport().peer_addr());
+            log::info!("peer={:?}", channel.transport().peer_addr());
             let server = Server::new(oneself.clone());
             channel.execute(server.serve())
         })

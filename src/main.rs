@@ -69,14 +69,14 @@ impl From<Oneself> for Partner {
 #[derive(Clone)]
 struct Server {
     oneself: Oneself,
-    partner: Option<Partner>,
+    partner: Arc<Mutex<Option<Partner>>>,
 }
 
 impl Server {
     fn new(oneself: Oneself) -> Self {
         Server {
             oneself,
-            partner: None,
+            partner: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -99,10 +99,11 @@ impl Service for Server {
         future::ready(Clock::new().elapsed())
     }
 
-    fn recruit(mut self, _ctx: tarpc::context::Context, partner: Partner) -> Self::RecruitFut {
-        match self.partner {
+    fn recruit(self, _ctx: tarpc::context::Context, partner: Partner) -> Self::RecruitFut {
+        let mut cur_partner = self.partner.lock().unwrap();
+        match *cur_partner {
             None => {
-                self.partner = Some(partner);
+                *cur_partner = Some(partner);
                 future::ok(self.oneself.into())
             }
             Some(partner) => future::err(ServiceError::HasAlreadyPartner(partner)),
@@ -164,6 +165,7 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
                 }
 
                 tokio::time::sleep(Duration::SECOND * 5).await;
+                println!("-----------------------------------------------------------");
             }
         });
     }
@@ -220,7 +222,7 @@ async fn client(oneself: Oneself, connect_peer: SocketAddr) -> Result<(), Box<dy
     log::info!("identity={}, epoch={:?}", identity, epoch);
 
     let recruit = client
-        .recruit(tarpc::context::current(), oneself.into())
+        .recruit(tarpc::context::current(), oneself.clone().into())
         .await?;
     log::info!("recruit = {:?}", recruit);
 
@@ -237,14 +239,15 @@ async fn serve(oneself: Oneself) -> Result<(), Box<dyn error::Error>> {
     )
     .await?;
 
+    let server = Server::new(oneself);
+
     listener.config_mut().max_frame_length(2048);
     listener
         .filter_map(|r| future::ready(r.ok()))
         .map(tarpc::server::BaseChannel::with_defaults)
         .map(|channel| {
             log::info!("peer={:?}", channel.transport().peer_addr());
-            let server = Server::new(oneself.clone());
-            channel.execute(server.serve())
+            channel.execute(server.clone().serve())
         })
         .buffer_unordered(10)
         .for_each(|_| async {})

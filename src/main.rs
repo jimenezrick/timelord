@@ -79,6 +79,10 @@ impl Server {
             partner: Arc::new(Mutex::new(None)),
         }
     }
+
+    fn forget(self) {
+        *self.partner.lock().unwrap() = None;
+    }
 }
 
 impl Service for Server {
@@ -229,6 +233,9 @@ async fn client(oneself: Oneself, connect_peer: SocketAddr) -> Result<(), Box<dy
     let now = client.now(tarpc::context::current()).await?;
     log::info!("now = {:?}", now);
 
+    // SLEEP --------------
+    tokio::time::sleep(Duration::SECOND * 5).await;
+
     Ok(())
 }
 
@@ -246,11 +253,14 @@ async fn serve(oneself: Oneself) -> Result<(), Box<dyn error::Error>> {
         .filter_map(|r| future::ready(r.ok()))
         .map(tarpc::server::BaseChannel::with_defaults)
         .map(|channel| {
-            log::info!("peer={:?}", channel.transport().peer_addr());
+            log::info!("Connected peer={:?}", channel.transport().peer_addr());
             channel.execute(server.clone().serve())
         })
         .buffer_unordered(10)
-        .for_each(|_| async {})
+        .for_each(|()| async {
+            log::info!("Disconnected partner={:?}", server.partner.lock().unwrap());
+            server.clone().forget();
+        })
         .await;
 
     Ok(())
